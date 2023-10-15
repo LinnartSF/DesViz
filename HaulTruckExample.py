@@ -5,7 +5,9 @@ import pandas as pd
 from DesVizScript import *
 
 class PMC_anim:
+
     def __init__(self):
+
         self.fanim = create_new_DesViz_script_file('pmc_script.csv')
         self.plant_tons = 0
         self.shovel_tons = [0, 0, 0]
@@ -18,15 +20,19 @@ class PMC_anim:
         self.server_end = {}
     
     def setup_layout(self):
+        
         server_list = ['P','S1','S2','S3']
         df_paths = pd.read_csv('resources/Paths.csv')
+        
         for s in server_list:
+            
             x = df_paths[df_paths['path_id']==s]['waypt_x'].iloc[0]
             y = df_paths[df_paths['path_id']==s]['waypt_y'].iloc[0]
             self.server_loc[s] = (x,y)
             x = df_paths[df_paths['path_id']==s]['waypt_x'].iloc[1]
             y = df_paths[df_paths['path_id']==s]['waypt_y'].iloc[1]
             self.server_end[s] = (x,y)
+        
         write_DesViz_command(self.fanim, 0,'add',['background','resources/backdrop_rd.jpg',1,0,0,1])
         write_DesViz_command(self.fanim, 0, 'text_field', ['plant_label','0 tons','Arial',24,self.server_end['P'][0],self.server_loc['P'][1]+55])
         write_DesViz_command(self.fanim, 0, 'text_field', ['sh_label3','0 tons','Arial',24,self.server_loc['S3'][0],self.server_loc['S3'][1]-75])
@@ -42,14 +48,21 @@ class PMC_anim:
         write_DesViz_command(self.fanim, 0, 'add_pbar', ['sh_pbar1',self.server_loc['S1'][0],self.server_loc['S1'][1]-50,100,20,0])
     
     def add_trucks(self,truck_list):
+        
         for truck in truck_list:
+            
             write_DesViz_command(self.fanim, 0, 'add', [truck.name,'resources/truckF.png',1,0,0,0])
+            
             if truck.capacity == 20:
+                
                 write_DesViz_command(self.fanim, 0, 'scale', [truck.name,self.scale20])
                 scale = self.scale20
+            
             else:
+                
                 write_DesViz_command(self.fanim, 0, 'scale', [truck.name,self.scale50])
                 scale = self.scale50
+            
             write_DesViz_command(self.fanim, 0, 'guide', [truck.name, 25,50])
             write_DesViz_command(self.fanim, 0, 'rotation', [truck.name,90])
             write_DesViz_command(self.fanim, 0, 'add_pbar', [truck.name+'pb',0,0,scale*100,10,0,0])
@@ -57,19 +70,24 @@ class PMC_anim:
             write_DesViz_command(self.fanim, 0, 'pbar_color', [truck.name+'pb',150,0,0])
 
     def move_truck(self, env, truck, duration, is_full, f0, f1):
+        
         time = env.now
+        
         if is_full:
+            
             write_DesViz_command(self.fanim, time, 'image', [truck.name,'resources/truckF.png'])
             write_DesViz_command(self.fanim, time, 'move_on', [truck.name,'S'+str(truck.shovel_num)+'toPq',duration,1,0,1])
             self.shovel_tons[truck.shovel_num-1] += truck.capacity
             write_DesViz_command(self.fanim, time, 'text', ['sh_label'+str(truck.shovel_num),
                                                              str(self.shovel_tons[truck.shovel_num-1])+' tons'])
         else:
+            
             write_DesViz_command(self.fanim, time, 'image', [truck.name,'resources/truckE.png'])
             write_DesViz_command(self.fanim, time, 'move_on', 
                                   [truck.name,'PtoS'+str(truck.shovel_num)+'q',duration,1,0,1])
             self.plant_tons += truck.capacity
             write_DesViz_command(self.fanim, time, 'text', ['plant_label', str(self.plant_tons)+' tons'])
+        
         env.process(self.defuel(env, truck, f0, f1, duration))
 
     def defuel(self, env, truck, f0, f1, duration):
@@ -204,22 +222,28 @@ class Truck:
         self.process = env.process(self.truck_process())
 
     def truck_process(self):
+        
         global anim
         cycle = 0
+        
         while True:
+            
             cycle += 1
             self.print_event(cycle,'ready to load')
 
             #request shovel and wait until front of queue and shovel ready
             req = self.shovel.request()
             anim.update_queue(self, env.now, self.shovel_num)
+            
             yield req
 
             #delay for loading
             self.print_event(cycle,'start loading')
             duration = self.load_a + rnd.random()*self.load_b
             anim.service_truck(env, self, env.now, duration, False)
+            
             yield self.env.timeout(duration)
+            
             self.print_event(cycle,'end loading')
             self.shovel.release(req)
 
@@ -228,19 +252,24 @@ class Truck:
             end_fuel = max(0, self.fuel - 0.1 * duration / self.travel_a)
             anim.move_truck(env, self, duration, True, self.fuel, end_fuel)
             self.fuel = end_fuel
+            
             yield self.env.timeout(duration)            
+            
             self.print_event(cycle,'ready to unload')
             
             #request crusher and wait until front of queue and crusher ready
             req = self.crusher.request(self.priority)
             anim.update_queue(self, env.now, 0)
+            
             yield req
 
             #delay for unloading
             self.print_event(cycle,'start unloading')
             duration = self.unload_a +rnd.random()*self.unload_b
             anim.service_truck(env, self, env.now, duration, True)
+            
             yield self.env.timeout(duration)
+            
             self.print_event(cycle,'end unloading')
             self.crusher.release(req)
 
@@ -252,6 +281,7 @@ class Truck:
             end_fuel = max(0, self.fuel - 0.1 * duration / self.travel_a)
             anim.move_truck(env, self, duration, False, self.fuel, end_fuel)
             self.fuel = end_fuel
+            
             yield self.env.timeout(duration)
 
             if self.fuel < 0.2:
@@ -261,10 +291,12 @@ class Truck:
                 self.fuel = 1
 
     def print_event(self, cycle_num, event):
+        
         if PRINT_ALL:
+            
             print(str(round(self.env.now,2)) +','+ str(self.shovel_num) +','+ self.name +','+ str(cycle_num) +','+ event)
 
-#settings
+# model configuration and settings
 SIM_END = 1000
 PRIORITY_50t = 0   #0=>higher priority, 1=>equal priority to 20t trucks
 PRINT_ALL = False      #set to False to surpress verbose printing
@@ -272,10 +304,6 @@ PRINT_ALL = False      #set to False to surpress verbose printing
 if PRINT_ALL:
     print ("time,shovel,truck,cycle,event")  #headings for output log
 
-#initialise simulation objects
-#DesViz = DesVizMaster(1500, 750)
-#DesViz.set_paths('resources/Paths.csv')
-#anim_master = DesViz
 anim.setup_layout()
 
 env = simpy.Environment()
