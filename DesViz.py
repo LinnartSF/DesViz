@@ -599,7 +599,7 @@ class DesVizMaster:
     - set_anim_speed
     - set_script
     - set_paths
-    - add_objects
+    - add_object
     - frame_update
     - run
     - update_animation_actions
